@@ -58,12 +58,12 @@ lede-ar71xx-generic-tl-wr720n-v3-squashfs-sysupgrade.bin
 ## 修改源
 
 ```
-src/gz reboot_core http://mirrors.ustc.edu.cn/lede/releases/17.01.5/targets/ar71xx/generic/packages
-src/gz reboot_base http://mirrors.ustc.edu.cn/lede/releases/17.01.5/packages/mips_24kc/base
-src/gz reboot_luci http://mirrors.ustc.edu.cn/lede/releases/17.01.5/packages/mips_24kc/luci
-src/gz reboot_packages http://mirrors.ustc.edu.cn/lede/releases/17.01.5/packages/mips_24kc/packages
-src/gz reboot_routing http://mirrors.ustc.edu.cn/lede/releases/17.01.5/packages/mips_24kc/routing
-src/gz reboot_telephony http://mirrors.ustc.edu.cn/lede/releases/17.01.5/packages/mips_24kc/telephony
+src/gz reboot_core http://mirrors.tuna.tsinghua.edu.cn/lede/releases/17.01.5/targets/ar71xx/generic/packages
+src/gz reboot_base http://mirrors.tuna.tsinghua.edu.cn/lede/releases/17.01.5/packages/mips_24kc/base
+src/gz reboot_luci http://mirrors.tuna.tsinghua.edu.cn/lede/releases/17.01.5/packages/mips_24kc/luci
+src/gz reboot_packages http://mirrors.tuna.tsinghua.edu.cn/lede/releases/17.01.5/packages/mips_24kc/packages
+src/gz reboot_routing http://mirrors.tuna.tsinghua.edu.cn/lede/releases/17.01.5/packages/mips_24kc/routing
+src/gz reboot_telephony http://mirrors.tuna.tsinghua.edu.cn/lede/releases/17.01.5/packages/mips_24kc/telephony
 ```
 
 ## 参考
