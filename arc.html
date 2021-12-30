@@ -1,0 +1,214 @@
+<canvas id="canvas1" width="400" height="300"></canvas>
+<div>
+  <input type="radio" id="clockwise" name="clockwise" value="true" checked />
+  <label for="clockwise">顺时针</label>
+  <input type="radio" id="anticlockwise" name="clockwise" value="false" />
+  <label for="anticlockwise">逆时针</label>
+</div>
+<div>
+  <input
+    type="radio"
+    id="centerPointSide"
+    name="centerPointSide"
+    value="true"
+    checked
+  />
+  <label for="centerPointSide">优弧</label>
+  <input
+    type="radio"
+    id="anticenterPointSide"
+    name="centerPointSide"
+    value="false"
+  />
+  <label for="anticenterPointSide">劣弧</label>
+</div>
+<div>
+  <label for="startPoint">S点坐标</label>
+  <input type="number" id="startPoint" name="startPointX" value="200" />
+  <input type="number" name="startPointY" value="100" />
+</div>
+<div>
+  <label for="endPoint">E点坐标</label>
+  <input type="number" id="endPoint" name="endPointX" value="90" />
+  <input type="number" name="endPointY" value="90" />
+</div>
+<div>
+  <label for="radius">半径</label>
+  <input type="number" id="radius" name="radius" value="90" />
+</div>
+<div>
+  <label for="d">直径</label>
+  <input type="number" id="d" name="d" readonly disabled />
+</div>
+<div>
+  <label for="distance">SE距离</label>
+  <input type="number" id="distance" name="distance" readonly disabled />
+</div>
+<button onclick="go()">go</button>
+<script>
+  const canvas = document.getElementById("canvas1");
+  const ctx = canvas.getContext("2d");
+  go();
+
+  function go() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    var startPoint = [
+      parseInt(document.querySelector("[name=startPointX]").value),
+      parseInt(document.querySelector("[name=startPointY]").value),
+    ];
+    var endPoint = [
+      parseInt(document.querySelector("[name=endPointX]").value),
+      parseInt(document.querySelector("[name=endPointY]").value),
+    ];
+    var radius = parseInt(document.querySelector("[name=radius]").value);
+    var clockwise =
+      document.querySelector("[name=clockwise]:checked").value === "true";
+    var centerPointSide =
+      document.querySelector("[name=centerPointSide]:checked").value === "true";
+
+    var distance = twoPointDistance(startPoint, endPoint);
+
+    var d = 2 * radius;
+    document.querySelector("[name=d]").value = d;
+    document.querySelector("[name=distance]").value = distance;
+
+    // 直径小于SE距离，不成立
+    if (d < distance) {
+      document.querySelector("[for=d]").style.color = "red";
+      document.querySelector("[for=distance]").style.color = "red";
+      return;
+    } else {
+      document.querySelector("[for=d]").style.color = "black";
+      document.querySelector("[for=distance]").style.color = "black";
+    }
+
+    console.log(
+      (clockwise ? "顺时针" : "逆时针") +
+        "," +
+        (centerPointSide ? "优弧" : "劣弧")
+    );
+    var result = cal(startPoint, endPoint, radius, clockwise, centerPointSide);
+
+    console.log(
+      "角度：" +
+        (result.startAngle * 180) / Math.PI +
+        "," +
+        (result.endAngle * 180) / Math.PI
+    );
+    console.log("圆心：" + result.centerPoint[0] + "," + result.centerPoint[1]);
+
+    markPoint(ctx, startPoint, "S");
+    markPoint(ctx, endPoint, "E");
+    markPoint(ctx, result.centerPoint, "C");
+
+    ctx.strokeStyle = "red";
+    ctx.beginPath();
+    ctx.moveTo(result.centerPoint[0], result.centerPoint[1]);
+    ctx.lineTo(canvas.width, result.centerPoint[1]);
+    ctx.moveTo(result.centerPoint[0], result.centerPoint[1]);
+    ctx.lineTo(startPoint[0], startPoint[1]);
+    ctx.moveTo(result.centerPoint[0], result.centerPoint[1]);
+    ctx.lineTo(endPoint[0], endPoint[1]);
+    ctx.stroke();
+    ctx.strokeStyle = "black";
+
+    ctx.beginPath();
+    // https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasRenderingContext2D/arc
+    // void ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+    ctx.arc(
+      result.centerPoint[0],
+      result.centerPoint[1],
+      radius,
+      result.startAngle,
+      result.endAngle,
+      !clockwise
+    );
+    ctx.stroke();
+  }
+  // 入参：S坐标、E坐标、弧半径、顺逆时针方向、优/劣弧
+  // 出参：圆心坐标，起始角度，结束角度
+  // clockwise bool 顺时针
+  // centerPointSide bool 圆心一边（优弧）
+  // startAngle 开始角度
+  // endAngle 结束角度
+  function cal(startPoint, endPoint, radius, clockwise, centerPointSide) {
+    // aboveC,上优顺，下劣逆
+    // belowC,上劣顺，下优逆
+    //var centerPosition = clockwise == centerPointSide ? "aboveC" : "belowC";
+    var centerPoint;
+    if (clockwise == centerPointSide) {
+      centerPoint = getAboveCenterPoint(startPoint, endPoint, radius);
+    } else {
+      centerPoint = getAboveCenterPoint(endPoint, startPoint, radius);
+    }
+
+    var startAngle = angle(
+      centerPoint[0],
+      centerPoint[1],
+      startPoint[0],
+      startPoint[1]
+    );
+    var endAngle = angle(
+      centerPoint[0],
+      centerPoint[1],
+      endPoint[0],
+      endPoint[1]
+    );
+
+    return {
+      centerPoint,
+      startAngle,
+      endAngle,
+    };
+  }
+
+  function angle(cx, cy, ex, ey) {
+    var dy = ey - cy;
+    var dx = ex - cx;
+    var theta = Math.atan2(dy, dx); // range (-PI, PI]
+
+    return theta;
+  }
+
+  function getAboveCenterPoint(pointA, pointB, radius) {
+    var x1 = pointA[0],
+      y1 = pointA[1],
+      x2 = pointB[0],
+      y2 = pointB[1];
+    var twoPointDistancePow2 = Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
+    var twoPointDistance = Math.sqrt(twoPointDistancePow2);
+
+    // C到SE的垂直线长度/SE长度
+    var tmp1 =
+      Math.sqrt(Math.pow(2 * radius, 2) - twoPointDistancePow2) /
+      2 /
+      twoPointDistance;
+
+    var x = (x1 + x2) / 2 + (-y1 + y2) * tmp1;
+    var y = (y1 + y2) / 2 + (x1 - x2) * tmp1;
+    return [x, y];
+  }
+
+  // 两点距离
+  function twoPointDistance(pointA, pointB) {
+    return Math.sqrt(
+      Math.pow(Math.abs(pointA[0] - pointB[0]), 2) +
+        Math.pow(Math.abs(pointA[1] - pointB[1]), 2)
+    );
+  }
+
+  // 两点的中点
+  function twoPointCenter(pointA, pointB) {
+    return [(pointA[0] + pointB[0]) / 2, (pointA[1] + pointB[1]) / 2];
+  }
+
+  function markPoint(ctx, point, mark) {
+    ctx.font = "20px serif";
+    ctx.strokeText(mark, point[0] + 10, point[1]);
+
+    ctx.beginPath();
+    ctx.arc(point[0], point[1], 5, 0, 2 * Math.PI);
+    ctx.fill();
+  }
+</script>

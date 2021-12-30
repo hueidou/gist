@@ -1,0 +1,295 @@
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.14"></script>
+<div id="app">
+  <canvas ref="canvas1" width="400" height="300"></canvas>
+  <div>
+    <input type="radio" id="clockwise" v-model="clockwise" :value="true" />
+    <label for="clockwise">顺时针</label>
+    <input type="radio" id="anticlockwise" v-model="clockwise" :value="false" />
+    <label for="anticlockwise">逆时针</label>
+  </div>
+  <div>
+    <input
+      type="radio"
+      id="centerPointSide"
+      name="centerPointSide"
+      v-model="centerPointSide"
+      :value="true"
+    />
+    <label for="centerPointSide">优弧</label>
+    <input
+      type="radio"
+      id="anticenterPointSide"
+      name="centerPointSide"
+      v-model="centerPointSide"
+      :value="false"
+    />
+    <label for="anticenterPointSide">劣弧</label>
+  </div>
+  <div>
+    <label for="startPoint">S点坐标</label>
+    <input
+      type="number"
+      id="startPoint"
+      name="startPointX"
+      v-model.number="startPoint.x"
+    />
+    <input type="number" name="startPointY" v-model.number="startPoint.y" />
+  </div>
+  <div>
+    <label for="endPoint">E点坐标</label>
+    <input
+      type="number"
+      id="endPoint"
+      name="endPointX"
+      v-model.number="endPoint.x"
+    />
+    <input type="number" name="endPointY" v-model.number="endPoint.y" />
+  </div>
+  <div>
+    <label for="radius">半径</label>
+    <input type="number" id="radius" name="radius" v-model.number="radius" />
+  </div>
+  <div>
+    <label for="d" :style="{color: normal ? 'black' : 'red'}">直径</label>
+    <input type="number" id="d" name="d" :value="d" readonly disabled />
+  </div>
+  <div>
+    <label for="distance" :style="{color: normal ? 'black' : 'red'}"
+      >SE距离</label
+    >
+    <input
+      type="number"
+      id="distance"
+      name="distance"
+      :value="distance"
+      readonly
+      disabled
+    />
+  </div>
+  <div>
+    <label for="angle">开始/结束角度</label>
+    <input
+      id="angle"
+      :value="(result.startAngle * 180) / Math.PI +
+      ',' +
+      (result.endAngle * 180) / Math.PI"
+      size="50"
+      readonly
+      disabled
+    />
+  </div>
+  <div>
+    <label for="centerPoint">圆心</label>
+    <input
+      id="centerPoint"
+      :value="result.centerPoint.x + ',' + result.centerPoint.y"
+      size="50"
+      readonly
+      disabled
+    />
+  </div>
+</div>
+<script>
+  new Vue({
+    el: "#app",
+    data: {
+      canvas: null,
+      ctx: null,
+      startPoint: {
+        x: 200,
+        y: 100,
+      },
+      endPoint: {
+        x: 90,
+        y: 90,
+      },
+      radius: 90,
+      clockwise: true,
+      centerPointSide: true,
+      //
+      distance: 0,
+      d: 0,
+      normal: true,
+      result: { centerPoint: {} },
+    },
+    mounted: function () {
+      this.canvas = this.$refs.canvas1;
+      this.ctx = this.canvas.getContext("2d");
+      this.go();
+    },
+    computed: {
+      watch1: function () {
+        const { startPoint, endPoint, radius, clockwise, centerPointSide } =
+          this;
+        return { startPoint, endPoint, radius, clockwise, centerPointSide };
+      },
+    },
+    watch: {
+      watch1: {
+        handler() {
+          this.go();
+        },
+        deep: true,
+      },
+    },
+    methods: {
+      go: function () {
+        var canvas = this.canvas;
+        var ctx = this.ctx;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        this.distance = this.twoPointDistance(this.startPoint, this.endPoint);
+        this.d = 2 * this.radius;
+
+        this.normal = this.d >= this.distance;
+        // 直径小于SE距离，不成立
+        if (!this.normal) {
+          return;
+        }
+
+        console.log(
+          (this.clockwise ? "顺时针" : "逆时针") +
+            "," +
+            (this.centerPointSide ? "优弧" : "劣弧")
+        );
+        console.log(
+          this.startPoint.x +
+            "," +
+            this.startPoint.y +
+            "," +
+            this.endPoint.x +
+            "," +
+            this.endPoint.y
+        );
+        console.log(this.radius);
+
+        this.result = this.cal(
+          this.startPoint,
+          this.endPoint,
+          this.radius,
+          this.clockwise,
+          this.centerPointSide
+        );
+        var result = this.result;
+
+        console.log(
+          "角度：" +
+            (result.startAngle * 180) / Math.PI +
+            "," +
+            (result.endAngle * 180) / Math.PI
+        );
+        console.log(
+          "圆心：" + result.centerPoint.x + "," + result.centerPoint.y
+        );
+
+        this.markPoint(ctx, this.startPoint, "S");
+        this.markPoint(ctx, this.endPoint, "E");
+        this.markPoint(ctx, result.centerPoint, "C");
+
+        ctx.strokeStyle = "red";
+        ctx.beginPath();
+        ctx.moveTo(result.centerPoint.x, result.centerPoint.y);
+        ctx.lineTo(canvas.width, result.centerPoint.y);
+        ctx.moveTo(result.centerPoint.x, result.centerPoint.y);
+        ctx.lineTo(this.startPoint.x, this.startPoint.y);
+        ctx.moveTo(result.centerPoint.x, result.centerPoint.y);
+        ctx.lineTo(this.endPoint.x, this.endPoint.y);
+        ctx.stroke();
+        ctx.strokeStyle = "black";
+
+        ctx.beginPath();
+        // https://developer.mozilla.org/zh-CN/docs/Web/API/CanvasRenderingContext2D/arc
+        // void ctx.arc(x, y, radius, startAngle, endAngle, anticlockwise);
+        ctx.arc(
+          result.centerPoint.x,
+          result.centerPoint.y,
+          this.radius,
+          result.startAngle,
+          result.endAngle,
+          !this.clockwise
+        );
+        ctx.stroke();
+      },
+      // 两点距离
+      twoPointDistance: function (pointA, pointB) {
+        return Math.sqrt(
+          Math.pow(Math.abs(pointA.x - pointB.x), 2) +
+            Math.pow(Math.abs(pointA.y - pointB.y), 2)
+        );
+      },
+      // 入参：S坐标、E坐标、弧半径、顺逆时针方向、优/劣弧
+      // 出参：圆心坐标，起始角度，结束角度
+      // clockwise bool 顺时针
+      // centerPointSide bool 圆心一边（优弧）
+      // startAngle 开始角度
+      // endAngle 结束角度
+      cal: function (startPoint, endPoint, radius, clockwise, centerPointSide) {
+        // aboveC,上优顺，下劣逆
+        // belowC,上劣顺，下优逆
+        //var centerPosition = clockwise == centerPointSide ? "aboveC" : "belowC";
+        var centerPoint;
+        if (clockwise == centerPointSide) {
+          centerPoint = this.getAboveCenterPoint(startPoint, endPoint, radius);
+        } else {
+          centerPoint = this.getAboveCenterPoint(endPoint, startPoint, radius);
+        }
+
+        var startAngle = this.angle(
+          centerPoint.x,
+          centerPoint.y,
+          startPoint.x,
+          startPoint.y
+        );
+        var endAngle = this.angle(
+          centerPoint.x,
+          centerPoint.y,
+          endPoint.x,
+          endPoint.y
+        );
+
+        return {
+          centerPoint,
+          startAngle,
+          endAngle,
+        };
+      },
+
+      getAboveCenterPoint: function (pointA, pointB, radius) {
+        var x1 = pointA.x,
+          y1 = pointA.y,
+          x2 = pointB.x,
+          y2 = pointB.y;
+        var twoPointDistancePow2 = Math.pow(x1 - x2, 2) + Math.pow(y1 - y2, 2);
+        var twoPointDistance = Math.sqrt(twoPointDistancePow2);
+
+        // C到SE的垂直线长度/SE长度
+        var tmp1 =
+          Math.sqrt(Math.pow(2 * radius, 2) - twoPointDistancePow2) /
+          2 /
+          twoPointDistance;
+
+        var x = (x1 + x2) / 2 + (-y1 + y2) * tmp1;
+        var y = (y1 + y2) / 2 + (x1 - x2) * tmp1;
+
+        return { x, y };
+      },
+
+      angle: function (cx, cy, ex, ey) {
+        var dy = ey - cy;
+        var dx = ex - cx;
+        var theta = Math.atan2(dy, dx); // range (-PI, PI]
+
+        return theta;
+      },
+
+      markPoint: function (ctx, point, mark) {
+        ctx.font = "20px serif";
+        ctx.strokeText(mark, point.x + 10, point.y);
+
+        ctx.beginPath();
+        ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI);
+        ctx.fill();
+      },
+    },
+  });
+</script>
